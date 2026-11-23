@@ -3,8 +3,8 @@
 
 실행 (저장소 맨 위 폴더에서):
     pip install huggingface_hub pyarrow pillow
-    python mismatch_pairs/prepare_mismatch_data.py                                    # 전체
-    python mismatch_pairs/prepare_mismatch_data.py --groups test_nyt test_bbc test_cnn  # 시험용만
+    python data_preparation/mismatch_pairs/prepare_mismatch_data.py                                    # 전체
+    python data_preparation/mismatch_pairs/prepare_mismatch_data.py --groups test_nyt test_bbc test_cnn  # 테스트용만
 
 결과 (data/ 폴더는 .gitignore에 들어 있어 깃에 올라가지 않는다):
     data/mismatch/images/<split>/<행 번호>.<확장자>    진짜 사진
@@ -21,6 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parents[1]  # 저장소 맨 위 폴더 (받은 사진은 여기의 data/에 저장)
 DATASET = "anson-huang/mirage-news"
 GROUPS = ["train", "validation", "test_nyt", "test_bbc", "test_cnn"]
 SETS = ["easy", "hard"]
@@ -122,7 +123,7 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
                         help="받을 묶음 (기본: 전부)")
     parser.add_argument("--sets", nargs="+", default=SETS, choices=SETS, help="만들 세트 (기본: easy hard)")
     parser.add_argument("--pairs", default=str(HERE / "mismatch_pairs.csv"), help="짝 표 경로")
-    parser.add_argument("--out", default=str(HERE.parent / "data" / "mismatch"), help="저장 폴더")
+    parser.add_argument("--out", default=str(REPO_ROOT / "data" / "mismatch"), help="저장 폴더")
     args = parser.parse_args(argv)
 
     started = time.time()

@@ -9,7 +9,8 @@
 
 ```bash
 pip install huggingface_hub pyarrow pillow
-python ai_photos/prepare_ai_photos.py --normalize
+python data_preparation/prepare_all.py                               # 데이터 세 가지를 한 번에
+python data_preparation/ai_photos/prepare_ai_photos.py --normalize   # 이 데이터만
 ```
 
 - 처음 실행할 때 MiRAGeNews 원본 약 2.1GB를 받아요. 글-사진 짝 데이터를 이미 받았다면 다시 받지 않아요.
@@ -125,6 +126,8 @@ print((df["problem_pred"] == df["problem"]).groupby(df["case"]).mean())  # 경�
 
 > **주의** 4문항 중 3문항이 "문제 있음"이라서, 전부 "문제 있음"이라고 찍어도 종합 정확도가 75%예요. 종합 점수만 보지 말고 **경우별 정확도**를 같이 보세요. 특히 "진짜 + 글 맞음"을 문제 없다고 맞히는지가 중요해요.
 
+결과는 저장소 맨 위 `results/<이름>/` 폴더에 올려요. 올리는 방법은 [`results/README.md`](../../results/README.md)에 있어요.
+
 ## 5. 지킬 것
 
 - 판정에는 사진과 글만 쓰고, 정답 칸은 마지막 채점에만 써요.
@@ -138,4 +141,4 @@ print((df["problem_pred"] == df["problem"]).groupby(df["case"]).mean())  # 경�
 | `prepare_ai_photos.py` | 사진·표 받기 (팀원이 실행) |
 | `combined_test_pairs.csv`, `.meta.json` | 통합 시험 세트를 섞는 방법이 적힌 표 (행 번호와 정답) |
 | `make_combined_test.py` | 통합 시험 세트 표를 새로 만들 때만 씀 (`pip install datasets scikit-learn numpy`) |
-| `test_*.py` | 코드 점검용 (`python -m pytest -q ai_photos`) |
+| `test_*.py` | 코드 점검용 (`python -m pytest -q data_preparation`) |

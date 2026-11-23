@@ -3,8 +3,8 @@
 
 실행 (저장소 맨 위 폴더에서):
     pip install huggingface_hub pyarrow pillow
-    python ai_photos/prepare_ai_photos.py --normalize
-    python ai_photos/prepare_ai_photos.py --normalize --splits test1_nyt_mj test2_bbc_dalle   # 일부만
+    python data_preparation/ai_photos/prepare_ai_photos.py --normalize
+    python data_preparation/ai_photos/prepare_ai_photos.py --normalize --splits test1_nyt_mj test2_bbc_dalle   # 일부만
 
 결과 (data/ 폴더는 .gitignore에 들어 있어 깃에 올라가지 않는다):
     data/ai_photos/images/<split>/<행 번호>.<확장자>   원본 사진 (받은 그대로)
@@ -24,6 +24,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parents[1]  # 저장소 맨 위 폴더 (받은 사진은 여기의 data/에 저장)
 DATASET = "anson-huang/mirage-news"
 SPLITS = ["train", "validation", "test1_nyt_mj", "test2_bbc_dalle", "test3_cnn_dalle",
           "test4_bbc_sdxl", "test5_cnn_sdxl"]
@@ -141,7 +142,7 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
     parser.add_argument("--normalize", action="store_true",
                         help=f"가운데 {CROP}x{CROP} 자르기 + JPEG {JPEG_QUALITY} 버전도 만들기")
     parser.add_argument("--combined", default=str(HERE / "combined_test_pairs.csv"), help="통합 시험 세트 표")
-    parser.add_argument("--out", default=str(HERE.parent / "data" / "ai_photos"), help="저장 폴더")
+    parser.add_argument("--out", default=str(REPO_ROOT / "data" / "ai_photos"), help="저장 폴더")
     args = parser.parse_args(argv)
 
     started = time.time()

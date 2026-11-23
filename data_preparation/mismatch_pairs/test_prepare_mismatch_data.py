@@ -1,4 +1,4 @@
-"""가짜 parquet 파일로 prepare_mismatch_data.py를 시험한다. 실행: python -m pytest -q mismatch_pairs"""
+"""가짜 parquet 파일로 prepare_mismatch_data.py를 시험한다. 실행: python -m pytest -q data_preparation"""
 import csv
 import io
 import json

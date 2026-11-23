@@ -9,7 +9,8 @@ MiRAGeNews의 진짜 사진과 글을 섞어 만든 **"글이 사진과 맞는�
 
 ```bash
 pip install huggingface_hub pyarrow pillow
-python mismatch_pairs/prepare_mismatch_data.py
+python data_preparation/prepare_all.py                          # 데이터 세 가지를 한 번에
+python data_preparation/mismatch_pairs/prepare_mismatch_data.py  # 이 데이터만
 ```
 
 - 처음 실행할 때 MiRAGeNews 원본 약 2.1GB를 받아요 (인터넷 속도에 따라 몇 분).
@@ -53,7 +54,7 @@ print("정확도:", test["ok"].mean())
 print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 ```
 
-결과는 `results/` 폴더에 올려요. 올리는 방법은 [`results/README.md`](results/README.md)에 있어요.
+결과는 저장소 맨 위 `results/<이름>/` 폴더에 올려요. 올리는 방법은 [`results/README.md`](../../results/README.md)에 있어요.
 
 ## 3. 지킬 것
 
@@ -90,5 +91,4 @@ print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 | `mismatch_pairs.csv` | 섞는 방법이 적힌 표 (행 번호와 정답) |
 | `mismatch_pairs.meta.json` | 데이터 버전과 개수 |
 | `make_mismatch_pairs.py` | 표를 새로 만들 때만 씀 (`pip install datasets scikit-learn numpy`) |
-| `test_*.py` | 코드 점검용 (`python -m pytest -q mismatch_pairs`) |
-| `results/` | 각자 평가 결과를 올리는 곳 |
+| `test_*.py` | 코드 점검용 (`python -m pytest -q data_preparation`) |

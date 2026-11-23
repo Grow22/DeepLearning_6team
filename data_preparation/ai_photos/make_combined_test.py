@@ -11,7 +11,7 @@
 
 사용법 (표를 새로 만들 때만):
     pip install datasets scikit-learn numpy
-    python ai_photos/make_combined_test.py
+    python data_preparation/ai_photos/make_combined_test.py
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""합성 데이터로 make_combined_test.py를 시험한다. 실행: python -m pytest -q ai_photos"""
+"""합성 데이터로 make_combined_test.py를 시험한다. 실행: python -m pytest -q data_preparation"""
 import csv
 import json
 import random
