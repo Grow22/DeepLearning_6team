@@ -1,0 +1,99 @@
+{
+  "dataset": "anson-huang/mirage-news",
+  "revision": "b5a7e734850b4ec623ddee018a1d9e097fe248ef",
+  "created_at": "2026-11-23T12:32:47+00:00",
+  "seed": 42,
+  "dup_thr": 0.3,
+  "topk": 20,
+  "label": {
+    "0": "맞음 (원래 글)",
+    "1": "안 맞음 (다른 사진의 글)"
+  },
+  "groups": {
+    "train": [
+      "train"
+    ],
+    "validation": [
+      "validation"
+    ],
+    "test_nyt": [
+      "test1_nyt_mj"
+    ],
+    "test_bbc": [
+      "test2_bbc_dalle",
+      "test4_bbc_sdxl"
+    ],
+    "test_cnn": [
+      "test3_cnn_dalle",
+      "test5_cnn_sdxl"
+    ]
+  },
+  "source_label_counts": {
+    "train": {
+      "real": 5000,
+      "fake": 5000
+    },
+    "validation": {
+      "real": 1250,
+      "fake": 1250
+    },
+    "test1_nyt_mj": {
+      "real": 250,
+      "fake": 250
+    },
+    "test2_bbc_dalle": {
+      "real": 250,
+      "fake": 250
+    },
+    "test3_cnn_dalle": {
+      "real": 250,
+      "fake": 250
+    },
+    "test4_bbc_sdxl": {
+      "real": 250,
+      "fake": 250
+    },
+    "test5_cnn_sdxl": {
+      "real": 250,
+      "fake": 250
+    }
+  },
+  "stats": {
+    "train": {
+      "real_photos": 4997,
+      "duplicates_skipped": 3,
+      "easy_mean_sim": 0.0024,
+      "hard_mean_sim": 0.1445,
+      "hard_random_fallback": 325
+    },
+    "validation": {
+      "real_photos": 1249,
+      "duplicates_skipped": 1,
+      "easy_mean_sim": 0.0034,
+      "hard_mean_sim": 0.1148,
+      "hard_random_fallback": 65
+    },
+    "test_nyt": {
+      "real_photos": 250,
+      "duplicates_skipped": 0,
+      "easy_mean_sim": 0.0027,
+      "hard_mean_sim": 0.0907,
+      "hard_random_fallback": 19
+    },
+    "test_bbc": {
+      "real_photos": 291,
+      "duplicates_skipped": 209,
+      "easy_mean_sim": 0.0022,
+      "hard_mean_sim": 0.0772,
+      "hard_random_fallback": 26
+    },
+    "test_cnn": {
+      "real_photos": 289,
+      "duplicates_skipped": 211,
+      "easy_mean_sim": 0.0033,
+      "hard_mean_sim": 0.0758,
+      "hard_random_fallback": 20
+    }
+  },
+  "total_rows": 28304
+}
