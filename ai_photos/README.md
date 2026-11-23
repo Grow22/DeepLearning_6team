@@ -97,7 +97,38 @@ test["ok"] = test["pred"] == test["label"]
 print(test.groupby("split")["ok"].mean())  # split별 정확도
 ```
 
-통합 시험 세트는 `is_ai`와 `is_mismatch`를 각각 채점하고, 둘 중 하나라도 1이면 "문제 있는 카드"로 보고 함께 채점하면 돼요.
+### 통합 시험 세트 채점
+
+문항 하나가 카드 한 장처럼 사진(진짜/AI)과 글(맞음/안 맞음)로 되어 있어요. 같은 문항에 AI 판정과 짝 판정을 둘 다 돌려요.
+
+| 경우 | 사진 | 글 | `is_ai` | `is_mismatch` | 종합 정답 |
+|---|---|---|---|---|---|
+| 1 | 진짜 | 맞음 | 0 | 0 | 문제 없음 |
+| 2 | 진짜 | 안 맞음 | 0 | 1 | 문제 있음 |
+| 3 | AI | 맞음 | 1 | 0 | 문제 있음 |
+| 4 | AI | 안 맞음 | 1 | 1 | 문제 있음 |
+
+채점은 세 가지로 해요.
+
+1. **AI 판정**: 사진 판정 결과를 `is_ai`와 비교
+2. **짝 판정**: 글-사진 판정 결과를 `is_mismatch`와 비교
+3. **종합**: 둘 중 하나라도 걸리면 "문제 있음"으로 보고 종합 정답과 비교
+
+```python
+df = pd.read_csv("data/ai_photos/combined_test.csv")
+df["ai_pred"] = ...        # 각자 AI 판정 (0 진짜 / 1 AI)
+df["mismatch_pred"] = ...  # 각자 짝 판정 (0 맞음 / 1 안 맞음)
+
+df["problem"] = df["is_ai"] | df["is_mismatch"]
+df["problem_pred"] = df["ai_pred"] | df["mismatch_pred"]
+df["case"] = df["is_ai"].map({0: "진짜", 1: "AI"}) + " + 글 " + df["is_mismatch"].map({0: "맞음", 1: "안 맞음"})
+
+print("AI 판정 정확도:", (df["ai_pred"] == df["is_ai"]).mean())
+print("짝 판정 정확도:", (df["mismatch_pred"] == df["is_mismatch"]).mean())
+print((df["problem_pred"] == df["problem"]).groupby(df["case"]).mean())  # 경우별 종합 정확도
+```
+
+> **주의** 네 경우가 같은 수라서 4문항 중 3문항이 "문제 있음"이에요. 전부 "문제 있음"이라고 찍어도 종합 정확도가 75%가 나와요. 종합 점수만 보지 말고 **경우별 정확도**를 같이 보세요. 특히 "진짜 + 글 맞음"을 문제 없다고 맞히는지가 중요해요.
 
 ## 5. 지킬 것
 
