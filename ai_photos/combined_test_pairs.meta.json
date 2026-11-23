@@ -1,0 +1,44 @@
+{
+  "dataset": "anson-huang/mirage-news",
+  "revision": "b5a7e734850b4ec623ddee018a1d9e097fe248ef",
+  "created_at": "2026-11-23T13:05:56+00:00",
+  "seed": 42,
+  "dup_thr": 0.3,
+  "label": {
+    "is_ai": "0 = 진짜 사진, 1 = AI 사진",
+    "is_mismatch": "0 = 글이 맞음, 1 = 글이 안 맞음"
+  },
+  "stats": {
+    "test1_nyt_mj": {
+      "real_match": 125,
+      "real_mismatch": 125,
+      "ai_match": 125,
+      "ai_mismatch": 125
+    },
+    "test2_bbc_dalle": {
+      "real_match": 125,
+      "real_mismatch": 125,
+      "ai_match": 125,
+      "ai_mismatch": 125
+    },
+    "test3_cnn_dalle": {
+      "real_match": 125,
+      "real_mismatch": 125,
+      "ai_match": 125,
+      "ai_mismatch": 125
+    },
+    "test4_bbc_sdxl": {
+      "real_match": 125,
+      "real_mismatch": 125,
+      "ai_match": 125,
+      "ai_mismatch": 125
+    },
+    "test5_cnn_sdxl": {
+      "real_match": 125,
+      "real_mismatch": 125,
+      "ai_match": 125,
+      "ai_mismatch": 125
+    }
+  },
+  "total_rows": 2500
+}
