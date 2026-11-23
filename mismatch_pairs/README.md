@@ -1,8 +1,7 @@
 # 글-사진 짝 데이터 (MiRAGeNews)
 
 MiRAGeNews의 진짜 사진과 글을 섞어 만든 **"글이 사진과 맞는지" 판정용 데이터**예요.
-깃에는 섞는 방법이 적힌 표만 있고, 사진과 글은 스크립트가 MiRAGeNews에서 받아 표대로 섞어 줘요.
-누가 실행해도 똑같이 섞인 데이터가 나와요.
+깃에는 섞는 방법이 적힌 표만 있어요. 스크립트를 실행하면 MiRAGeNews에서 사진과 글을 받아 표대로 섞어 줘요. 누가 실행해도 똑같은 데이터가 나와요.
 
 ## 1. 데이터 받기
 
@@ -14,22 +13,22 @@ python mismatch_pairs/prepare_mismatch_data.py
 ```
 
 - 처음 실행할 때 MiRAGeNews 원본 약 2.1GB를 받아요 (인터넷 속도에 따라 몇 분).
-- 시험용만 필요하면 `--groups test_nyt test_bbc test_cnn`을 붙여요 (원본 약 1.3GB).
-- 다시 실행해도 이미 받은 사진은 그대로 둬요.
+- 테스트용만 필요하면 `--groups test_nyt test_bbc test_cnn`을 붙여요 (원본 약 1.3GB).
+- 다시 실행해도 이미 받은 사진은 다시 받지 않아요.
 
 결과는 `data/mismatch/`에 생겨요. `data/` 폴더는 깃에 올라가지 않아요.
 
 ```
 data/mismatch/
 ├── images/<split>/<번호>.jpg   진짜 사진 7,076장 (557MB)
-├── easy.csv                    안 맞는 글을 무작위로 고른 세트
-└── hard.csv                    안 맞는 글을 내용이 비슷한 것으로 고른 세트
+├── easy.csv                    안 맞는 글을 아무거나 고른 세트
+└── hard.csv                    안 맞는 글을 비슷한 내용으로 고른 세트
 ```
 
 | csv 칸 | 뜻 |
 |---|---|
 | `pair_id` | 쌍 번호 |
-| `group` | `train` / `validation` / `test_nyt` / `test_bbc` / `test_cnn` |
+| `group` | 묶음: `train` / `validation` / `test_nyt` / `test_bbc` / `test_cnn` |
 | `image_path` | 사진 위치 (`data/mismatch/` 기준) |
 | `text` | 사진에 붙인 글 |
 | `label` | 정답: 0 = 맞음, 1 = 안 맞음 |
@@ -54,13 +53,13 @@ print("정확도:", test["ok"].mean())
 print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 ```
 
-결과는 `mismatch_pairs/results/`에 올려요. 올리는 방법은 [`results/README.md`](results/README.md)에 있어요.
+결과는 `results/` 폴더에 올려요. 올리는 방법은 [`results/README.md`](results/README.md)에 있어요.
 
 ## 3. 지킬 것
 
 - 판정에는 사진과 글만 쓰고, `label`은 마지막 채점에만 써요.
-- 쌍마다 따로 판정해요. 같은 사진이 맞음 1번, 안 맞음 1번 나오니 쌍끼리 비교하지 않아요.
-- 학습은 `train`, 기준값 정하기는 `validation`, 최종 평가는 `test_*` 묶음으로 해요.
+- 쌍마다 따로 판정해요. 같은 사진이 맞음과 안 맞음에 한 번씩 나오니 쌍끼리 비교하지 않아요.
+- `train`은 학습, `validation`은 기준값(맞음·안 맞음을 가르는 값) 정하기, `test_*`는 최종 평가에 써요.
 - `data/` 폴더(사진)는 깃에 올리지 않아요. 원본 데이터셋에 라이선스 표시가 없어요.
 
 ## 4. 구성
@@ -76,12 +75,12 @@ print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 
 ## 5. 어떻게 섞었나
 
-- 진짜 쌍(MiRAGeNews label 0)만 써요. 사진마다 원래 글을 붙인 "맞음" 1쌍과, 같은 묶음의 다른 사진 글을 붙인 "안 맞음" 1쌍을 만들어요.
-  - 같은 사진과 같은 글이 맞음과 안 맞음에 한 번씩 나와서, 사진이나 글 한쪽만 보고는 정답을 맞힐 수 없어요 (한쪽으로 찍으면 정확히 50%). 둘을 비교해야만 점수가 올라가요.
-  - AI 사진(label 1)은 빼요. 섞으면 "AI 사진"을 잡은 건지 "안 맞는 글"을 잡은 건지 구분이 안 돼요. AI 사진까지 섞은 시험은 `ai_photos/`의 통합 시험 세트에 있어요.
-- easy는 무작위 글, hard는 내용이 비슷한 글(TF-IDF 유사도)을 붙여요. 같은 사건으로 보이는 글(유사도 0.3 이상)은 빼요.
-- 글은 같은 묶음 안에서만 바꿔요. BBC·CNN 사진은 두 시험 세트에 겹쳐 있어서 한 번만 썼어요.
-- hard에는 "같은 인물·다른 사건" 쌍이 많아서, 사람이 봐도 헷갈리는 쌍이 일부 있어요.
+- 진짜 사진만 써요. 사진마다 원래 글을 붙인 "맞음" 1쌍과, 같은 묶음의 다른 사진 글을 붙인 "안 맞음" 1쌍을 만들어요.
+- 그래서 같은 사진과 같은 글이 맞음과 안 맞음에 한 번씩 나와요. 한쪽만 보고는 맞힐 수 없고(한쪽으로 찍으면 50%), 사진과 글을 비교해야 점수가 올라가요.
+- AI 사진은 넣지 않았어요. 섞으면 "AI 사진"을 잡은 건지 "안 맞는 글"을 잡은 건지 알 수 없어요. AI 사진까지 섞은 테스트는 `ai_photos/`의 통합 시험 세트에 있어요.
+- easy는 아무 글이나, hard는 겹치는 단어가 많은 비슷한 글을 붙여요. 너무 비슷해서 같은 사건으로 보이는 글은 쓰지 않아요.
+- hard에는 "같은 인물, 다른 사건" 쌍이 많아서 사람이 봐도 헷갈리는 쌍이 조금 있어요.
+- 글은 같은 묶음 안에서만 바꿔요. BBC·CNN 진짜 사진은 MiRAGeNews 테스트 세트 두 곳에 겹쳐 있어서 한 번만 썼어요.
 
 ## 6. 파일
 
@@ -89,7 +88,7 @@ print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 |---|---|
 | `prepare_mismatch_data.py` | 사진·글을 받아 표대로 섞기 (팀원이 실행) |
 | `mismatch_pairs.csv` | 섞는 방법이 적힌 표 (행 번호와 정답) |
-| `mismatch_pairs.meta.json` | 데이터 버전, 시드, 개수 |
+| `mismatch_pairs.meta.json` | 데이터 버전과 개수 |
 | `make_mismatch_pairs.py` | 표를 새로 만들 때만 씀 (`pip install datasets scikit-learn numpy`) |
-| `test_*.py` | 시험 코드 (`python -m pytest -q mismatch_pairs`) |
-| `results/` | 각자 평가 결과를 올리는 곳 (올리는 방법은 `results/README.md`) |
+| `test_*.py` | 코드 점검용 (`python -m pytest -q mismatch_pairs`) |
+| `results/` | 각자 평가 결과를 올리는 곳 |

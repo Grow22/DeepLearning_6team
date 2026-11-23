@@ -23,6 +23,6 @@ predictions 칸:
 
 ## 지킬 것
 
-- 결과는 test 묶음(`test_nyt`, `test_bbc`, `test_cnn`)으로 내요. `train`·`validation`은 학습과 기준값 정하기에만 써요.
+- 결과는 test 묶음(`test_nyt`, `test_bbc`, `test_cnn`)으로 내요. `train`·`validation`은 학습과 기준값(맞음·안 맞음을 가르는 값) 정하기에만 써요.
 - 사진이나 `data/` 폴더는 올리지 않아요. csv와 md만 올려요.
 - 정확도는 다 같이 채우고, 다른 지표는 각자 자유롭게 추가해요.

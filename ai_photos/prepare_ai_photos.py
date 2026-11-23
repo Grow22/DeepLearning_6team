@@ -8,7 +8,7 @@
 
 결과 (data/ 폴더는 .gitignore에 들어 있어 깃에 올라가지 않는다):
     data/ai_photos/images/<split>/<행 번호>.<확장자>   원본 사진 (받은 그대로)
-    data/ai_photos/normalized/<split>/<행 번호>.jpg    --normalize: 가운데 256x256 자르기 + JPEG 95
+    data/ai_photos/normalized/<split>/<행 번호>.jpg    --normalize: 형식·크기를 맞춘 사진 (가운데 256x256 + 같은 품질 JPEG)
     data/ai_photos/ai_photos.csv                       사진마다 split, 정답, 출처, 생성기, 형식, 크기, 경로
     data/ai_photos/combined_test.csv                   통합 시험 세트 (사진 경로, 글, AI 여부, 글 불일치 여부)
 """
@@ -34,8 +34,8 @@ SOURCE = {
     "test2_bbc_dalle": ("BBC", "DALL-E 3"), "test3_cnn_dalle": ("CNN", "DALL-E 3"),
     "test4_bbc_sdxl": ("BBC", "SDXL"), "test5_cnn_sdxl": ("CNN", "SDXL"),
 }
-CROP = 256          # 정규화: 가운데를 이 크기로 자른다 (크기 변경 없음)
-JPEG_QUALITY = 95   # 정규화: 모든 사진을 같은 품질의 JPEG로 저장
+CROP = 256          # 형식·크기 맞추기: 줄이거나 늘리지 않고 가운데를 이 크기로 자른다
+JPEG_QUALITY = 95   # 형식·크기 맞추기: 모든 사진을 같은 품질의 JPEG로 저장
 PHOTO_FIELDS = ["image_id", "split", "label", "source", "generator", "image_path",
                 "format", "width", "height", "normalized_path"]
 COMBINED_FIELDS = ["item_id", "split", "image_path", "text", "is_ai", "is_mismatch", "normalized_path"]
@@ -192,7 +192,7 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
     for split in args.splits:
         print(f"  {split:16s} 진짜 {counts[(split, 0)]:5d}  AI {counts[(split, 1)]:5d}")
     if args.normalize:
-        print(f"- 정규화 사진 {len(photos) - too_small}장 ({CROP}x{CROP} JPEG), "
+        print(f"- 형식·크기를 맞춘 사진 {len(photos) - too_small}장 ({CROP}x{CROP} JPEG), "
               f"{CROP}px보다 작아 뺀 사진 {too_small}장 (normalized_path가 빈칸)")
     print(f"- 통합 시험 세트 combined_test.csv: {len(combined)}문항")
     print("- 정답: label 0 = 진짜, 1 = AI / is_mismatch 0 = 글 맞음, 1 = 글 안 맞음")
