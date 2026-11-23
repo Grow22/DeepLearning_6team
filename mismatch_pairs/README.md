@@ -54,6 +54,8 @@ print("정확도:", test["ok"].mean())
 print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 ```
 
+결과는 `mismatch_pairs/results/`에 올려요. 올리는 방법은 [`results/README.md`](results/README.md)에 있어요.
+
 ## 3. 지킬 것
 
 - 판정에는 사진과 글만 쓰고, `label`은 마지막 채점에만 써요.
@@ -88,3 +90,4 @@ print(test.groupby("group")["ok"].mean())  # 묶음별 정확도
 | `mismatch_pairs.meta.json` | 데이터 버전, 시드, 개수 |
 | `make_mismatch_pairs.py` | 표를 새로 만들 때만 씀 (`pip install datasets scikit-learn numpy`) |
 | `test_*.py` | 시험 코드 (`python -m pytest -q mismatch_pairs`) |
+| `results/` | 각자 평가 결과를 올리는 곳 (올리는 방법은 `results/README.md`) |
