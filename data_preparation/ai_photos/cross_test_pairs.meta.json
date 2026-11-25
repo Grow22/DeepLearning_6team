@@ -1,0 +1,44 @@
+{
+  "dataset": "anson-huang/mirage-news",
+  "revision": "b5a7e734850b4ec623ddee018a1d9e097fe248ef",
+  "created_at": "2026-11-25T10:06:13+00:00",
+  "seed": 42,
+  "label": {
+    "is_ai": "0 = 진짜 사진, 1 = AI 사진",
+    "text_fake": "0 = 기사 글(사실), 1 = GPT-4가 지어낸 글(거짓)"
+  },
+  "note": "글은 모두 같은 사건의 것이라 사진과 맞는 글이다.",
+  "stats": {
+    "test1_nyt_mj": {
+      "events": 250,
+      "same_row_sim": 0.487,
+      "shifted_row_sim": 0.0032,
+      "same_row_top1": 0.984
+    },
+    "test2_bbc_dalle": {
+      "events": 250,
+      "same_row_sim": 0.3871,
+      "shifted_row_sim": 0.0027,
+      "same_row_top1": 0.988
+    },
+    "test3_cnn_dalle": {
+      "events": 250,
+      "same_row_sim": 0.3282,
+      "shifted_row_sim": 0.0016,
+      "same_row_top1": 0.916
+    },
+    "test4_bbc_sdxl": {
+      "events": 250,
+      "same_row_sim": 0.3695,
+      "shifted_row_sim": 0.0018,
+      "same_row_top1": 0.98
+    },
+    "test5_cnn_sdxl": {
+      "events": 250,
+      "same_row_sim": 0.3216,
+      "shifted_row_sim": 0.0015,
+      "same_row_top1": 0.92
+    }
+  },
+  "total_rows": 5000
+}

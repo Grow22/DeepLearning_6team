@@ -62,13 +62,26 @@ def hub(tmp_path):
             ("test1_nyt_mj-0003", "test1_nyt_mj", 3, 3, 0, 0),
         ])
     (tmp_path / "combined_test_pairs.meta.json").write_text(json.dumps({"revision": "rev1"}), encoding="utf-8")
-    return {"combined": combined, "source": {"train": train, "test1_nyt_mj": test1},
+
+    # 교차 시험 세트: test1의 AI 행 0·1 ↔ 진짜 행 2·3이 같은 사건
+    cross = tmp_path / "cross_test_pairs.csv"
+    with open(cross, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["item_id", "split", "image_row", "text_row", "is_ai", "text_fake"])
+        w.writerows([
+            ("cross-test1_nyt_mj-0000", "test1_nyt_mj", 2, 2, 0, 0),
+            ("cross-test1_nyt_mj-0001", "test1_nyt_mj", 2, 0, 0, 1),
+            ("cross-test1_nyt_mj-0002", "test1_nyt_mj", 0, 2, 1, 0),
+            ("cross-test1_nyt_mj-0003", "test1_nyt_mj", 0, 0, 1, 1),
+        ])
+    (tmp_path / "cross_test_pairs.meta.json").write_text(json.dumps({"revision": "rev1"}), encoding="utf-8")
+    return {"combined": combined, "cross": cross, "source": {"train": train, "test1_nyt_mj": test1},
             "list_files": lambda revision: files, "download": lambda revision, name: str(root / name)}
 
 
 def run(hub, out, *extra):
     return prep.main(["--splits", "train", "test1_nyt_mj", "--combined", str(hub["combined"]),
-                      "--out", str(out), *extra],
+                      "--cross", str(hub["cross"]), "--out", str(out), *extra],
                      list_files=hub["list_files"], download=hub["download"])
 
 
@@ -130,3 +143,25 @@ def test_rerun_writes_nothing_new(hub, tmp_path, capsys):
     capsys.readouterr()
     run(hub, out, "--normalize")
     assert "새로 저장 0장" in capsys.readouterr().out
+
+
+def test_cross_table_assembles_text_and_photo(hub, tmp_path):
+    out = tmp_path / "out"
+    run(hub, out, "--normalize")
+    items = {c["item_id"]: c for c in read(out / "cross_test.csv")}
+    assert list(next(iter(items.values()))) == prep.CROSS_FIELDS
+    real_fake = items["cross-test1_nyt_mj-0001"]  # 진짜 사진 + 지어낸 글
+    assert real_fake["image_path"] == "images/test1_nyt_mj/2.jpg"
+    assert real_fake["text"] == "ai caption 0"
+    assert (real_fake["is_ai"], real_fake["text_fake"]) == ("0", "1")
+    ai_true = items["cross-test1_nyt_mj-0002"]  # AI 사진 + 기사 글
+    assert ai_true["image_path"] == "images/test1_nyt_mj/0.png"
+    assert ai_true["text"] == "real caption 2"
+    assert (ai_true["is_ai"], ai_true["text_fake"]) == ("1", "0")
+
+
+def test_different_revisions_stop(hub, tmp_path):
+    meta = hub["cross"].with_suffix(".meta.json")
+    meta.write_text(json.dumps({"revision": "rev2"}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        run(hub, tmp_path / "out")

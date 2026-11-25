@@ -1,6 +1,6 @@
 # 데이터 준비
 
-팀에서 쓰는 데이터 세 가지를 한 번에 받는 곳이에요.
+팀에서 쓰는 데이터를 한 번에 받는 곳이에요.
 깃에는 섞는 방법이 적힌 표와 스크립트만 있고, 사진은 실행하면 각자 컴퓨터에 받아져요.
 
 ## 받기
@@ -25,6 +25,7 @@ python data_preparation/prepare_all.py
 | 글-사진 짝 | `data/mismatch/` | 진짜 사진 + 맞는 글/안 맞는 글 (easy·hard 세트당 14,152쌍) | [mismatch_pairs/README.md](mismatch_pairs/README.md) |
 | AI 사진 | `data/ai_photos/` | 진짜·AI 사진 15,000장과 정답 | [ai_photos/README.md](ai_photos/README.md) |
 | 통합 시험 | `data/ai_photos/combined_test.csv` | 진짜/AI 사진 × 맞는/안 맞는 글 2,500문항 | [ai_photos/README.md](ai_photos/README.md) |
+| 교차 시험 | `data/ai_photos/cross_test.csv` | 같은 사건의 진짜/AI 사진 × 사실/거짓 글 5,000문항 | [ai_photos/README.md](ai_photos/README.md) |
 
 ## 결과 올리기
 
@@ -34,7 +35,7 @@ python data_preparation/prepare_all.py
 
 | 파일·폴더 | 내용 |
 |---|---|
-| `prepare_all.py` | 데이터 세 가지를 한 번에 받기 |
+| `prepare_all.py` | 데이터를 한 번에 받기 |
 | `mismatch_pairs/` | 글-사진 짝 데이터의 표와 스크립트 |
-| `ai_photos/` | AI 사진 데이터·통합 시험 세트의 표와 스크립트 |
+| `ai_photos/` | AI 사진 데이터·통합 시험 세트·교차 시험 세트의 표와 스크립트 |
 | `test_prepare_all.py` | 코드 점검용 (`python -m pytest -q data_preparation`) |

@@ -11,6 +11,7 @@
     data/ai_photos/normalized/<split>/<행 번호>.jpg    --normalize: 형식·크기를 맞춘 사진 (가운데 256x256 + 같은 품질 JPEG)
     data/ai_photos/ai_photos.csv                       사진마다 split, 정답, 출처, 생성기, 형식, 크기, 경로
     data/ai_photos/combined_test.csv                   통합 시험 세트 (사진 경로, 글, AI 여부, 글 불일치 여부)
+    data/ai_photos/cross_test.csv                      교차 시험 세트 (사진 경로, 글, AI 여부, 글이 거짓인지)
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ JPEG_QUALITY = 95   # 형식·크기 맞추기: 모든 사진을 같은 품질�
 PHOTO_FIELDS = ["image_id", "split", "label", "source", "generator", "image_path",
                 "format", "width", "height", "normalized_path"]
 COMBINED_FIELDS = ["item_id", "split", "image_path", "text", "is_ai", "is_mismatch", "normalized_path"]
+CROSS_FIELDS = ["item_id", "split", "image_path", "text", "is_ai", "text_fake", "normalized_path"]
 
 
 def image_ext(data: bytes) -> str:
@@ -142,17 +144,23 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
     parser.add_argument("--normalize", action="store_true",
                         help=f"가운데 {CROP}x{CROP} 자르기 + JPEG {JPEG_QUALITY} 버전도 만들기")
     parser.add_argument("--combined", default=str(HERE / "combined_test_pairs.csv"), help="통합 시험 세트 표")
+    parser.add_argument("--cross", default=str(HERE / "cross_test_pairs.csv"), help="교차 시험 세트 표")
     parser.add_argument("--out", default=str(REPO_ROOT / "data" / "ai_photos"), help="저장 폴더")
     args = parser.parse_args(argv)
 
     started = time.time()
-    combined_path = Path(args.combined)
-    meta = json.loads(combined_path.with_suffix(".meta.json").read_text(encoding="utf-8"))
-    revision = meta["revision"]
-    with open(combined_path, newline="", encoding="utf-8") as f:
-        combined = [r for r in csv.DictReader(f) if r["split"] in args.splits]
+    tables, revisions = {}, set()
+    for name, path in (("combined", Path(args.combined)), ("cross", Path(args.cross))):
+        meta = json.loads(path.with_suffix(".meta.json").read_text(encoding="utf-8"))
+        revisions.add(meta["revision"])
+        with open(path, newline="", encoding="utf-8") as f:
+            tables[name] = [r for r in csv.DictReader(f) if r["split"] in args.splits]
+    if len(revisions) != 1:
+        raise SystemExit(f"통합 시험 세트와 교차 시험 세트의 데이터 버전이 달라요: {sorted(revisions)}")
+    revision = revisions.pop()
+    combined, cross = tables["combined"], tables["cross"]
     need_texts = defaultdict(set)
-    for r in combined:
+    for r in combined + cross:
         need_texts[r["split"]].add(int(r["text_row"]))
 
     out = Path(args.out)
@@ -186,6 +194,17 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
                 "is_mismatch": r["is_mismatch"], "normalized_path": photo["normalized_path"],
             })
 
+    with open(out / "cross_test.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CROSS_FIELDS)
+        writer.writeheader()
+        for r in cross:
+            photo = by_id[f"{r['split']}-{int(r['image_row']):05d}"]
+            writer.writerow({
+                "item_id": r["item_id"], "split": r["split"], "image_path": photo["image_path"],
+                "text": texts[(r["split"], int(r["text_row"]))], "is_ai": r["is_ai"],
+                "text_fake": r["text_fake"], "normalized_path": photo["normalized_path"],
+            })
+
     size_mb = sum((out / p["image_path"]).stat().st_size for p in photos) / 1e6
     counts = Counter((p["split"], p["label"]) for p in photos)
     print(f"\n완료 ({time.time() - started:.0f}초) → {out}")
@@ -196,7 +215,9 @@ def main(argv: list[str] | None = None, list_files=hub_list_files, download=hub_
         print(f"- 형식·크기를 맞춘 사진 {len(photos) - too_small}장 ({CROP}x{CROP} JPEG), "
               f"{CROP}px보다 작아 뺀 사진 {too_small}장 (normalized_path가 빈칸)")
     print(f"- 통합 시험 세트 combined_test.csv: {len(combined)}문항")
-    print("- 정답: label 0 = 진짜, 1 = AI / is_mismatch 0 = 글 맞음, 1 = 글 안 맞음")
+    print(f"- 교차 시험 세트 cross_test.csv: {len(cross)}문항")
+    print("- 정답: label·is_ai 0 = 진짜, 1 = AI / is_mismatch 0 = 글 맞음, 1 = 글 안 맞음 / "
+          "text_fake 0 = 기사 글(사실), 1 = 지어낸 글(거짓)")
     return 0
 
 

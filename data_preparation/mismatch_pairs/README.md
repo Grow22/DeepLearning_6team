@@ -9,7 +9,7 @@ MiRAGeNews의 진짜 사진과 글을 섞어 만든 **"글이 사진과 맞는�
 
 ```bash
 pip install huggingface_hub pyarrow pillow
-python data_preparation/prepare_all.py                          # 데이터 세 가지를 한 번에
+python data_preparation/prepare_all.py                          # 데이터 전부 한 번에
 python data_preparation/mismatch_pairs/prepare_mismatch_data.py  # 이 데이터만
 ```
 

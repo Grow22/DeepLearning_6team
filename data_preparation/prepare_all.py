@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""데이터 세 종류(글-사진 짝, AI 사진, 통합 시험 세트)를 한 번에 받는다.
+"""데이터(글-사진 짝, AI 사진, 통합 시험 세트, 교차 시험 세트)를 한 번에 받는다.
 
 실행 (저장소 맨 위 폴더에서):
     pip install huggingface_hub pyarrow pillow
@@ -8,7 +8,7 @@
 
 결과는 저장소 맨 위 data/ 폴더에 생긴다 (깃에 올라가지 않음).
     data/mismatch/    글-사진 짝 데이터
-    data/ai_photos/   AI 사진 데이터 + 통합 시험 세트
+    data/ai_photos/   AI 사진 데이터 + 통합·교차 시험 세트
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ TEST_SPLITS = [s for s in prepare_ai_photos.SPLITS if s.startswith("test")]
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="데이터 세 종류를 한 번에 받기")
+    parser = argparse.ArgumentParser(description="데이터를 한 번에 받기")
     parser.add_argument("--test-only", action="store_true", help="테스트용만 받기 (원본 약 1.3GB)")
     args = parser.parse_args(argv)
 
@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("[1/2] 글-사진 짝 데이터", flush=True)
     prepare_mismatch_data.main(mismatch_args)
-    print("\n[2/2] AI 사진 데이터 + 통합 시험 세트", flush=True)
+    print("\n[2/2] AI 사진 데이터 + 통합·교차 시험 세트", flush=True)
     prepare_ai_photos.main(ai_args)
     print("\n모두 완료: data/mismatch/, data/ai_photos/")
     return 0
