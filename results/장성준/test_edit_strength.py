@@ -77,6 +77,15 @@ def test_apply_edit_runs_the_named_edit():
         es.apply_edit(img, "blur", "1", "", es.default_font())
 
 
+def test_band_darkens_the_same_band_but_writes_no_text():
+    img, text = Image.new("RGB", (400, 200), (128, 128, 128)), "Breaking news from the city hall today " * 10
+    band = np.asarray(es.apply_edit(img, "band", "0.3", text, es.default_font()), dtype=int)
+    covered = np.asarray(es.apply_edit(img, "cover", "0.3", text, es.default_font()), dtype=int)
+    assert (band[:140] == 128).all()                  # 위 70%는 그대로
+    assert band[140:].max() < 60                       # 글이 주어져도 쓰지 않음
+    assert (band[140:] == covered[140:].min()).mean() > 0.99  # 띠 어둡기는 '띠 + 글'과 같음
+
+
 def test_summarize_groups_by_split_group():
     rows = [("test1_nyt_mj", 1, 0.9), ("test1_nyt_mj", 0, 0.2),
             ("test4_bbc_sdxl", 1, 0.4), ("test4_bbc_sdxl", 0, 0.1),

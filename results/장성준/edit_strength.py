@@ -6,6 +6,7 @@
     jpeg    JPEG 품질 95 → 30으로 다시 저장 (카드는 85로 저장했다)
     shrink  가로·세로를 75% → 25%로 줄이기
     cover   사진 아래쪽을 어두운 띠 + 흰 글씨로 10% → 50% 가리기 (글은 그 사건의 사실 글)
+    band    같은 어두운 띠만 글 없이 10% → 50% 덮기 (cover와 비교해 가린 것 때문인지 글자 때문인지 본다)
 
 판정은 univfd.py가 학습한 분류기를 그대로 쓰고, 기준(0.5)도 바꾸지 않는다.
 시험 사진은 test1(학습 때 본 생성기)과 SDXL(test4·5) 1,500장이다. DALL-E 3(test2·3)는 원본부터
@@ -17,7 +18,7 @@
     data/edit_strength/features/          편집한 사진의 특징 (중간에 멈춰도 다시 실행하면 이어서 계산)
     data/edit_strength/scores.csv         사진마다 AI일 확률
     data/edit_strength/summary.csv        편집·단계·묶음마다 정확도, AUC, 진짜를 진짜로, AI를 AI로
-    data/edit_strength/edit_strength.png  그래프 (test1)
+    data/edit_strength/edit_strength.png  그래프 (test1, 편집마다 한 칸)
 """
 from __future__ import annotations
 
@@ -45,8 +46,10 @@ import univfd  # noqa: E402
 SPLITS = ["test1_nyt_mj", "test4_bbc_sdxl", "test5_cnn_sdxl"]
 GROUPS = {"test1": ["test1_nyt_mj"], "sdxl": ["test4_bbc_sdxl", "test5_cnn_sdxl"]}
 GROUP_NAMES = {"test1": "test1 (NYT · Midjourney)", "sdxl": "SDXL (BBC · CNN)"}
-LEVELS = {"jpeg": [95, 85, 75, 50, 30], "shrink": [0.75, 0.5, 0.35, 0.25], "cover": [0.1, 0.2, 0.3, 0.4, 0.5]}
-EDIT_NAMES = {"jpeg": "JPEG 품질", "shrink": "사진 축소 (가로·세로)", "cover": "글로 가린 비율 (아래부터)"}
+LEVELS = {"jpeg": [95, 85, 75, 50, 30], "shrink": [0.75, 0.5, 0.35, 0.25], "cover": [0.1, 0.2, 0.3, 0.4, 0.5],
+          "band": [0.1, 0.2, 0.3, 0.4, 0.5]}
+EDIT_NAMES = {"jpeg": "JPEG 품질", "shrink": "사진 축소 (가로·세로)", "cover": "띠 + 글로 가린 비율 (아래부터)",
+              "band": "띠만 덮은 비율 (글 없이)"}
 THRESHOLD = 0.5
 TEXT_SIZE = 0.05   # 글자 크기: 사진 짧은 변의 5% (카드에서 사진 위에 덮은 글과 비슷한 크기)
 BAND_ALPHA = 215   # 띠 어둡기: 카드에서 사진 위에 글을 덮을 때 가장 어두운 곳과 같다
@@ -104,6 +107,8 @@ def apply_edit(img: Image.Image, edit: str, level, text: str, font_path: str) ->
         return shrink(img, float(level))
     if edit == "cover":
         return cover(img, float(level), text, font_path)
+    if edit == "band":
+        return cover(img, float(level), "", font_path)
     raise ValueError(f"모르는 편집: {edit}")
 
 
@@ -160,8 +165,9 @@ def plot(summary: list[dict], path: Path, group: str = "test1") -> None:
         plt.rcParams["font.family"] = family
     ink, ink2, grid, axis = "#191919", "#666666", "#e7e7e7", "#c2c2c2"
     series = [("acc", "정확도", "#257de0"), ("ai_acc", "AI를 AI로", "#f47230"), ("real_acc", "진짜를 진짜로", "#00b894")]
-    fig, axes = plt.subplots(1, len(LEVELS), figsize=(11, 4.1), sharey=True)
-    for ax, edit in zip(axes, LEVELS):
+    nrows = (len(LEVELS) + 1) // 2
+    fig, axes = plt.subplots(nrows, 2, figsize=(10, 3.4 * nrows + 0.9), sharey=True, squeeze=False)
+    for ax, edit in zip(axes.flat, LEVELS):
         rows = [r for r in summary if r["edit"] == edit and r["group"] == group]
         x = list(range(len(rows)))
         ax.axhline(50, color=axis, lw=1, zorder=1)
@@ -180,14 +186,18 @@ def plot(summary: list[dict], path: Path, group: str = "test1") -> None:
             ax.spines[side].set_visible(False)
         ax.spines["bottom"].set_color(axis)
         ax.tick_params(colors=ink2, length=0, labelsize=10)
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper right", ncol=3, frameon=False, fontsize=10, labelcolor=ink2,
-               bbox_to_anchor=(0.99, 0.99))
+    for ax in list(axes.flat)[len(LEVELS):]:
+        ax.set_visible(False)
+    height = fig.get_figheight()  # 제목·범례 자리는 인치로 잡는다 (그림 높이가 바뀌어도 같은 간격)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="center right", ncol=3, frameon=False, fontsize=10, labelcolor=ink2,
+               bbox_to_anchor=(0.99, 1 - 0.55 / height))
     title = GROUP_NAMES[group].replace(" · ", ", ")  # 한글 글꼴에서는 가운뎃점이 넓게 보여서
-    fig.text(0.01, 0.955, f"{title} 사진에 편집을 한 가지씩 세게 했을 때", fontsize=13, color=ink,
+    fig.text(0.01, 1 - 0.25 / height, f"{title} 사진에 편집을 한 가지씩 세게 했을 때", fontsize=13, color=ink,
              ha="left", va="center")
-    fig.text(0.01, 0.885, "왼쪽 끝이 원본, 회색 가로선이 찍기 수준(50%)", fontsize=10, color=ink2, ha="left", va="center")
-    fig.tight_layout(rect=(0, 0, 1, 0.84))
+    fig.text(0.01, 1 - 0.55 / height, "왼쪽 끝이 원본, 회색 가로선이 찍기 수준(50%)", fontsize=10, color=ink2,
+             ha="left", va="center")
+    fig.tight_layout(rect=(0, 0, 1, 1 - 0.8 / height), h_pad=2.0)
     fig.savefig(path, dpi=160, facecolor="white")
     plt.close(fig)
 
