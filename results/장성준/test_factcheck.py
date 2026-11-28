@@ -185,3 +185,36 @@ def test_main_end_to_end_with_fake_client(tmp_path):
     assert "| **전체** | 10 | 100.0% | 1.000 | 100.0% | 100.0% |" in table
     assert "| CNN | 4 |" in table and "| 거짓 글 | 0 | 5 | 0 |" in table
     assert fc.main(["--data", str(tmp_path), "--report"], client=client) == 0 and len(client.calls) == 10
+
+
+def test_card_captions_and_card_report(tmp_path):
+    split = "test1_nyt_mj"
+    texts = {"c1": "Real caption one.", "c2": "Fake caption two is long.", "c3": "Fake caption two is long.",
+             "c4": "Real caption three."}
+    fake = {"c1": 0, "c2": 1, "c3": 1, "c4": 0}
+    read = {"c1": ("Real caption one.", "0", "1"), "c2": ("Fake caption two…", "1", "0"),
+            "c3": ("Fake caption two…", "1", "0"), "c4": ("Real capti0n three.", "0", "0")}
+    templates = {"c1": "photo_top", "c2": "title_top", "c3": "title_top", "c4": "photo_full"}
+    (tmp_path / "cards").mkdir()
+    with open(tmp_path / "cards" / "cards.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["card_id", "split", "template", "text", "text_fake"])
+        w.writeheader()
+        w.writerows({"card_id": k, "split": split, "template": templates[k], "text": texts[k], "text_fake": fake[k]}
+                    for k in texts)
+    with open(tmp_path / "cards" / "ocr.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["card_id", "ocr_text", "truncated", "same_as_original"])
+        w.writeheader()
+        w.writerows({"card_id": k, "ocr_text": v[0], "truncated": v[1], "same_as_original": v[2]} for k, v in read.items())
+    caps = sorted(fc.load_card_captions(tmp_path), key=lambda c: c["text"])
+    assert [(c["text"], c["label_fake"]) for c in caps] == [("Fake caption two…", 1), ("Real capti0n three.", 0)]
+
+    def save(name, recs):
+        (tmp_path / "factcheck").mkdir(exist_ok=True)
+        with open(tmp_path / "factcheck" / f"{fc.MODEL}-{name}.jsonl", "w", encoding="utf-8") as f:
+            for t, p in recs:
+                f.write(json.dumps({"id": fc.text_id(t), "p_false": p, "verdict": "TRUE"}) + "\n")
+    save("test", [("Real caption one.", 0.1), ("Fake caption two is long.", 0.9), ("Real caption three.", 0.2)])
+    save("cards", [("Fake caption two…", 0.3), ("Real capti0n three.", 0.1)])
+    table = fc.card_report(tmp_path, fc.MODEL)
+    assert "| **전체** | 4 | 100.0% | 50.0% | -50.0%p |" in table  # 잘린 거짓 글 2장을 놓침
+    assert "| 잘림 | 2 | 100.0% | 0.0% | -100.0%p |" in table and "| 읽기 실수 | 1 | 100.0% | 100.0% | +0.0%p |" in table

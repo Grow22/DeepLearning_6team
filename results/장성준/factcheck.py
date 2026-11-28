@@ -97,6 +97,73 @@ def load_test_captions(data: Path) -> list[dict]:
     return [{**c, "source": "/".join(sorted(c.pop("sources")))} for c in by_text.values()]
 
 
+def read_csv(path: Path) -> list[dict]:
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def load_card_captions(data: Path) -> list[dict]:
+    """카드에서 읽어낸 글 중 원래 글과 달라진 것(잘리거나 잘못 읽힌 글)을 중복 없이 모은다.
+
+    원래 글과 똑같이 읽힌 카드는 시험 글 판정을 그대로 쓰므로 다시 확인하지 않는다.
+    """
+    if not (data / "cards" / "ocr.csv").exists():
+        raise SystemExit("ocr.csv가 없어요. 먼저 python results/장성준/ocr_cards.py 를 실행해 주세요.")
+    cards = {c["card_id"]: c for c in read_csv(data / "cards" / "cards.csv")}
+    by_text = {}
+    for r in read_csv(data / "cards" / "ocr.csv"):
+        if r["same_as_original"] == "1":
+            continue
+        c, text = cards[r["card_id"]], norm(r["ocr_text"])
+        e = by_text.setdefault(text, {"labels": Counter(), "sources": set()})
+        e["labels"][int(c["text_fake"])] += 1
+        e["sources"].add(SOURCE[c["split"]])
+    return [{"id": text_id(t), "text": t, "label_fake": e["labels"].most_common(1)[0][0],
+             "source": "/".join(sorted(e["sources"]))} for t, e in by_text.items()]
+
+
+TEMPLATE_KO = {"photo_top": "사진 위·글 아래", "title_top": "제목 위·사진 가운데", "text_heavy": "글 많고 사진 작게",
+               "photo_full": "사진 위에 글 덮기"}
+
+
+def card_report(data: Path, model: str) -> str:
+    """카드마다 원래 글 판정과 카드에서 읽어낸 글 판정을 비교한다 (카드 편집 실험의 글 쪽)."""
+    test = load_records(data / "factcheck" / f"{model}-test.jsonl")
+    read_back = load_records(data / "factcheck" / f"{model}-cards.jsonl")
+    ocr = {r["card_id"]: r for r in read_csv(data / "cards" / "ocr.csv")}
+    rows, missing = [], 0
+    for c in read_csv(data / "cards" / "cards.csv"):
+        o = ocr[c["card_id"]]
+        before = test.get(text_id(c["text"]))
+        after = before if o["same_as_original"] == "1" else read_back.get(text_id(o["ocr_text"]))
+        if not before or not after or before.get("error") or after.get("error"):
+            missing += 1
+            continue
+        kind = "같게 읽힘" if o["same_as_original"] == "1" else ("잘림" if o["truncated"] == "1" else "읽기 실수")
+        rows.append({"template": c["template"], "kind": kind, "y": int(c["text_fake"]),
+                     "before": int(before["p_false"] >= 0.5), "after": int(after["p_false"] >= 0.5)})
+
+    def line(name, group, bold=False):
+        if not group:
+            return f"| {name} | 0 | - | - | - |"
+        b = sum(r["before"] == r["y"] for r in group) / len(group)
+        a = sum(r["after"] == r["y"] for r in group) / len(group)
+        s = "**" if bold else ""
+        return f"| {s}{name}{s} | {len(group):,} | {b * 100:.1f}% | {a * 100:.1f}% | {(a - b) * 100:+.1f}%p |"
+
+    lines = ["## 카드에서 읽어낸 글로 가짜 글 판정", "", "같은 카드를 원래 글로 판정했을 때와 카드에서 읽어낸 글로 판정했을 때의 정확도예요.", "",
+             "| 카드 | 카드 수 | 원래 글 | 카드에서 읽어낸 글 | 차이 |", "|---|---|---|---|---|"]
+    for t, name in TEMPLATE_KO.items():
+        lines.append(line(name, [r for r in rows if r["template"] == t]))
+    lines.append(line("전체", rows, bold=True))
+    lines += ["", "| 읽힌 상태 | 카드 수 | 원래 글 | 카드에서 읽어낸 글 | 차이 |", "|---|---|---|---|---|"]
+    for kind in ("같게 읽힘", "잘림", "읽기 실수"):
+        lines.append(line(kind, [r for r in rows if r["kind"] == kind]))
+    if missing:
+        lines.append(f"\n판정이 없어 뺀 카드 {missing}장")
+    return "\n".join(lines) + "\n"
+
+
 def load_validation_captions(limit: int, seed: int, rows=None) -> list[dict]:
     """MiRAGeNews validation 글에서 사실·거짓 글을 반반 뽑는다 (질문 문구를 시험해 볼 때)."""
     if rows is None:
@@ -370,7 +437,8 @@ def report(records: list[dict], title: str, cost: float | None = None, searches:
 
 def main(argv: list[str] | None = None, client=None, validation_rows=None) -> int:
     parser = argparse.ArgumentParser(description="가짜 글 판정 (Claude + 웹 검색)")
-    parser.add_argument("--set", default="test", choices=["test", "validation"], dest="which")
+    parser.add_argument("--set", default="test", choices=["test", "validation", "cards"], dest="which",
+                        help="test: 시험 글, validation: 시험용 글, cards: 카드에서 읽어낸 글 중 원래 글과 달라진 것")
     parser.add_argument("--limit", type=int, default=0, help="이만큼만 확인 (validation은 사실·거짓 반반)")
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"],
@@ -386,13 +454,14 @@ def main(argv: list[str] | None = None, client=None, validation_rows=None) -> in
 
     data = Path(args.data)
     out = Path(args.out) if args.out else data / "factcheck" / f"{args.model}-{args.which}.jsonl"
-    if args.which == "test":
-        captions = load_test_captions(data)
+    if args.which in ("test", "cards"):
+        captions = load_test_captions(data) if args.which == "test" else load_card_captions(data)
         if args.limit:
             captions = random.Random(args.seed).sample(captions, min(args.limit, len(captions)))
     else:
         captions = load_validation_captions(args.limit or 30, args.seed, validation_rows)
-    title = f"가짜 글 판정 결과 ({args.model}, {'시험' if args.which == 'test' else 'validation'} 글)"
+    which_ko = {"test": "시험 글", "validation": "validation 글", "cards": "카드에서 읽어낸 글"}[args.which]
+    title = f"가짜 글 판정 결과 ({args.model}, {which_ko})"
 
     if repair_unparsed(out):
         print("형식이 조금 어긋났던 답을 저장된 답으로 다시 읽었어요.")
@@ -421,6 +490,8 @@ def main(argv: list[str] | None = None, client=None, validation_rows=None) -> in
         return 0
     cost, searches = usage_so_far(out)
     text = report(records, title, cost, searches)
+    if args.which == "cards":
+        text += "\n" + card_report(data, args.model)
     print(text)
     out.with_suffix(".md").write_text(text, encoding="utf-8")
     print(f"결과: {out} / 표: {out.with_suffix('.md')}")
