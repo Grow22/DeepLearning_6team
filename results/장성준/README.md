@@ -1,4 +1,4 @@
-# 장성준 — AI 사진 판정 (UnivFD 방식) + 카드 편집 실험
+# 장성준 — AI 사진 판정 (UnivFD 방식) + 카드 편집 실험 + 가짜 글 판정
 
 ## 판정 도구
 
@@ -73,11 +73,51 @@ python results/장성준/score_cards.py data/univfd/scores.csv    # 결과 표
 - 중간에 멈춰도 다시 실행하면 이어서 계산해요.
 - 다른 판정 도구도 `score_cards.py`로 채점할 수 있어요. 점수 파일 형식(`input,id,score`)은 파일 맨 위 설명을 보세요.
 
+## 가짜 글 판정 (Claude Haiku 5.5 + 웹 검색)
+
+| 항목 | 내용 |
+|---|---|
+| 판정 | 글이 사실인지 |
+| 방식 | Claude Haiku 5.5가 웹 검색(글당 최대 2번)으로 원래 기사를 찾아 누가·무엇을·어디서·언제·숫자를 비교 |
+| 답 | 사실 / 거짓 / 근거 부족 + 거짓일 확률(0~1) + 이유 + 근거 링크. 확률 0.5 이상이면 거짓 |
+| 문체 | 글이 AI가 쓴 것처럼 보이는지는 판단에 쓰지 않게 함 (AI가 썼다고 거짓은 아니라서) |
+| 시험 | 시험 글 1,660개 (사실 830 + 거짓 830, 교차·통합 시험에 나오는 글을 중복 없이) |
+| 웹 검색 | 씀 |
+
+결과는 실행한 뒤에 채워요.
+
+### 실행 방법
+
+1. **API 크레딧 받기 (처음 한 번):** claude.ai 설정 > 결제의 API 크레딧에서 "Link organization"을 눌러 Console 조직을 연결해요. Ultra 플랜은 매달 $200가 들어와요.
+2. **API 키 만들기:** [platform.claude.com](https://platform.claude.com)의 API Keys에서 키를 만들어요. **키는 저장소나 채팅에 올리지 않아요.**
+3. **준비:** 데이터를 아직 안 받았다면 `python data_preparation/prepare_all.py`를 먼저 실행하고, 아래를 설치해요.
+   ```bash
+   pip install anthropic huggingface_hub pyarrow
+   ```
+4. **키 넣기:** 실행할 창에서 환경 변수로 넣어요.
+   ```bash
+   export ANTHROPIC_API_KEY="sk-ant-..."        # Mac·Linux
+   $env:ANTHROPIC_API_KEY="sk-ant-..."          # Windows PowerShell
+   ```
+5. **30개로 시험 (1달러 미만):** validation 글(사실 15 + 거짓 15)로 코드와 질문 문구가 제대로 도는지 봐요.
+   ```bash
+   python results/장성준/factcheck.py --set validation --limit 30
+   ```
+   오류가 많거나 거의 다 "근거 부족"이면 전체를 돌리기 전에 고쳐요.
+6. **전체 (약 $40):** 시험 글 1,660개를 확인해요. 시작 전에 예상 비용을 묻고, 쓴 금액이 $45에 닿으면 멈춰요.
+   ```bash
+   python results/장성준/factcheck.py
+   ```
+   - 중간에 멈춰도 다시 실행하면 끝난 글은 건너뛰고, 오류 난 글만 다시 해요.
+   - 기본은 동시에 4개씩 보내요. 더 빨리 하려면 `--workers 8`을 붙여요.
+7. **결과:** `data/factcheck/claude-haiku-5-5-test.md`에 표가 생겨요. 다시 보려면 `--report`를 붙여요.
+
 ## 파일
 
 | 파일 | 내용 |
 |---|---|
-| `univfd.py` | 판정 도구 (특징 계산 → 학습 → 점수) |
-| `score_cards.py` | 채점 (어떤 판정 도구든 점수 파일만 있으면) |
-| `scores.csv` | 이 결과의 점수 (입력마다 AI일 확률) |
-| `test_univfd.py`, `test_score_cards.py` | 코드 점검 (`python -m pytest -q results`) |
+| `univfd.py` | AI 사진 판정 도구 (특징 계산 → 학습 → 점수) |
+| `score_cards.py` | 카드 편집 실험 채점 (어떤 판정 도구든 점수 파일만 있으면) |
+| `scores.csv` | AI 사진 판정 점수 (입력마다 AI일 확률) |
+| `factcheck.py` | 가짜 글 판정 도구 (Claude + 웹 검색) |
+| `test_univfd.py`, `test_score_cards.py`, `test_factcheck.py` | 코드 점검 (`python -m pytest -q results`) |
