@@ -15,6 +15,7 @@ UnivFD 방식처럼 CLIP은 그대로 두고, 그 위에 "사진과 글이 맞�
 결과 (data/ 폴더는 깃에 올라가지 않는다):
     data/match/scores.csv   문항마다 "안 맞을" 확률
     data/match/report.md    결과 표
+    data/match/head.pkl     학습한 분류기 (final_verdict.py가 쓴다)
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import argparse
 import csv
 import hashlib
 import json
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -259,6 +261,7 @@ def main(argv: list[str] | None = None, image_model=None, text_encoder=None) -> 
     (out / "report.md").write_text(text, encoding="utf-8")
     info = {k: v for k, v in head.items() if k != "model"}
     (out / "head.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+    (out / "head.pkl").write_bytes(pickle.dumps(head["model"]))
     print(text)
     print(f"완료 ({(time.time() - started) / 60:.1f}분) → {out}")
     return 0

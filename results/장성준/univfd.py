@@ -18,12 +18,14 @@ UnivFD(Ojha 외, CVPR 2023)처럼 CLIP은 그대로 두고, 그 위의 선형 �
     data/univfd/features/   사진 특징 (중간에 멈춰도 다시 실행하면 이어서 계산)
     data/univfd/scores.csv  입력마다 AI일 확률
     data/univfd/head.json   고른 설정과 validation 점수
+    data/univfd/head.pkl    학습한 분류기 (final_verdict.py가 쓴다)
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import pickle
 import random
 import shutil
 import sys
@@ -248,6 +250,7 @@ def main(argv: list[str] | None = None, model=None) -> int:
     info.update({"model": MODEL_REPO, "train": len(y["train"]), "validation": len(y["validation"]),
                  "limit": args.limit, "seed": args.seed})
     (out / "head.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "head.pkl").write_bytes(pickle.dumps(head["model"]))
     print(f"완료 ({(time.time() - started) / 60:.1f}분) → {out / 'scores.csv'} ({len(rows_out)}줄)", flush=True)
     print(f"채점: python results/{HERE.name}/score_cards.py {out / 'scores.csv'}")
     return 0
