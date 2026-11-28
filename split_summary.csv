@@ -1,0 +1,6 @@
+split,A_Baseline,B_Image_RAG_GenD,C_Text_RAG,D_Full_Hybrid,E_Selective_Hybrid
+test1_nyt_mj,0.707,0.779,0.705,0.769,0.781
+test2_bbc_dalle,0.682,0.705,0.72,0.731,0.705
+test3_cnn_dalle,0.713,0.725,0.748,0.734,0.725
+test4_bbc_sdxl,0.643,0.736,0.708,0.743,0.736
+test5_cnn_sdxl,0.684,0.76,0.723,0.757,0.76
