@@ -64,6 +64,24 @@ def test_parse_verdict():
     assert fc.parse_verdict('{"verdict": "TRUE", "p_false": "high"}') is None
 
 
+def test_quotes_inside_reason_are_still_read():
+    text = 'blah\n{"verdict": "TRUE", "p_false": 0.1, "reason": "confirmed, though "Maria" is not."}'
+    assert fc.parse_verdict(text) == {"verdict": "TRUE", "p_false": 0.1, "reason": 'confirmed, though "Maria" is not.'}
+
+
+def test_unparsed_answers_are_repaired_without_new_calls(tmp_path):
+    out = tmp_path / "r.jsonl"
+    bad = {"id": "t1", "text": "x", "label_fake": 0, "source": "NYT", "cost": 0.02, "searches": 2,
+           "error": fc.UNPARSED + " (stop_reason=end_turn)",
+           "answer": 'Checked.\n{"verdict": "TRUE", "p_false": 0.2, "reason": "a "b" c"}'}
+    out.write_text(json.dumps(bad) + "\n", encoding="utf-8")
+    assert fc.repair_unparsed(out) == 1
+    rec = fc.load_records(out)["t1"]
+    assert (rec["verdict"], rec["p_false"], rec["repaired"]) == ("TRUE", 0.2, True) and "error" not in rec
+    assert fc.usage_so_far(out) == (0.02, 2)  # 다시 읽은 줄은 비용·검색을 두 번 세지 않음
+    assert fc.repair_unparsed(out) == 0
+
+
 def test_request_cost():
     usage = message([], inp=3000, out=400, searches=2).usage
     assert fc.request_cost(fc.MODEL, usage) == pytest.approx((3000 * 0.10 + 400 * 0.50) / 1e6 + 0.02)

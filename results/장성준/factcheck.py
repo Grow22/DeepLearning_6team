@@ -123,11 +123,24 @@ def load_validation_captions(limit: int, seed: int, rows=None) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Claude에게 묻기
 # ---------------------------------------------------------------------------
+def loose_json(chunk: str) -> dict | None:
+    """이유 안에 따옴표가 그대로 들어가 JSON이 깨진 경우에도 판정·확률·이유를 꺼낸다."""
+    verdict = re.search(r'"verdict"\s*:\s*"([A-Za-z_ ]+)"', chunk)
+    p_false = re.search(r'"p_false"\s*:\s*"?(-?\d*\.?\d+)', chunk)
+    if not (verdict and p_false):
+        return None
+    reason = re.search(r'"reason"\s*:\s*"(.*)"\s*\}', chunk, re.S)
+    return {"verdict": verdict.group(1), "p_false": p_false.group(1), "reason": reason.group(1) if reason else ""}
+
+
 def parse_verdict(text: str) -> dict | None:
     """답의 마지막 JSON에서 판정, 거짓일 확률, 이유를 꺼낸다. 없거나 이상하면 None."""
     for m in reversed(list(re.finditer(r"\{[^{}]*\}", text))):
         try:
             obj = json.loads(m.group(0))
+        except ValueError:
+            obj = loose_json(m.group(0))
+        try:
             verdict = str(obj.get("verdict", "")).strip().upper()
             p_false = float(obj.get("p_false"))
         except (ValueError, TypeError, AttributeError):
@@ -195,8 +208,27 @@ def check_caption(client, model: str, text: str, effort: str | None = None, max_
     rec["urls"] = list(dict.fromkeys(rec["urls"]))
     rec["answer"] = "\n".join(answer)[-1500:]
     parsed = parse_verdict("\n".join(answer))
-    rec.update(parsed if parsed else {"error": f"판정을 읽지 못했어요 (stop_reason={rec['stop_reason']})"})
+    rec.update(parsed if parsed else {"error": f"{UNPARSED} (stop_reason={rec['stop_reason']})"})
     return rec
+
+
+UNPARSED = "판정을 읽지 못했어요"
+
+
+def repair_unparsed(path: Path) -> int:
+    """답은 받았는데 형식이 조금 어긋나 못 읽은 글을 저장된 답으로 다시 읽는다 (API를 다시 부르지 않는다)."""
+    fixed = 0
+    for rec in list(load_records(path).values()):
+        if str(rec.get("error", "")).startswith(UNPARSED) and rec.get("answer"):
+            parsed = parse_verdict(rec["answer"])
+            if parsed:
+                new = {k: v for k, v in rec.items() if k != "error"}
+                new.update(parsed)
+                new["repaired"] = True  # 비용은 원래 줄에서 이미 셌다
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(new, ensure_ascii=False) + "\n")
+                fixed += 1
+    return fixed
 
 
 # ---------------------------------------------------------------------------
@@ -214,12 +246,22 @@ def load_records(path: Path) -> dict:
     return records
 
 
-def spent_so_far(path: Path) -> float:
-    total = 0.0
+def usage_so_far(path: Path) -> tuple[float, int]:
+    """실제로 쓴 금액과 검색 횟수. 다시 해서 덮어쓴 줄도 센다 (다시 읽기만 한 줄은 빼고)."""
+    cost, searches = 0.0, 0
     if path.exists():
         with open(path, encoding="utf-8") as f:
-            total = sum(json.loads(line).get("cost", 0.0) for line in f if line.strip())
-    return total
+            for line in f:
+                if line.strip():
+                    rec = json.loads(line)
+                    if not rec.get("repaired"):
+                        cost += rec.get("cost", 0.0)
+                        searches += rec.get("searches", 0)
+    return cost, searches
+
+
+def spent_so_far(path: Path) -> float:
+    return usage_so_far(path)[0]
 
 
 def run(captions: list[dict], client, model: str, out_path: Path, budget: float, workers: int = 4,
@@ -282,11 +324,12 @@ def auc(labels, scores) -> float:
     return score_cards.auc(labels, scores)
 
 
-def report(records: list[dict], title: str) -> str:
+def report(records: list[dict], title: str, cost: float | None = None, searches: int | None = None) -> str:
+    """cost·searches를 주면 그 값(실제로 쓴 금액)을, 안 주면 records의 합을 쓴다."""
     ok = [r for r in records if not r.get("error")]
     errors = len(records) - len(ok)
-    cost = sum(r.get("cost", 0.0) for r in records)
-    searches = sum(r.get("searches", 0) for r in records)
+    cost = sum(r.get("cost", 0.0) for r in records) if cost is None else cost
+    searches = sum(r.get("searches", 0) for r in records) if searches is None else searches
 
     def stats(rows):
         if not rows:
@@ -351,6 +394,8 @@ def main(argv: list[str] | None = None, client=None, validation_rows=None) -> in
         captions = load_validation_captions(args.limit or 30, args.seed, validation_rows)
     title = f"가짜 글 판정 결과 ({args.model}, {'시험' if args.which == 'test' else 'validation'} 글)"
 
+    if repair_unparsed(out):
+        print("형식이 조금 어긋났던 답을 저장된 답으로 다시 읽었어요.")
     if not args.report:
         done = load_records(out)
         todo = [c for c in captions if c["id"] not in done or done[c["id"]].get("error")]
@@ -374,7 +419,8 @@ def main(argv: list[str] | None = None, client=None, validation_rows=None) -> in
     if not records:
         print("아직 결과가 없어요.")
         return 0
-    text = report(records, title)
+    cost, searches = usage_so_far(out)
+    text = report(records, title, cost, searches)
     print(text)
     out.with_suffix(".md").write_text(text, encoding="utf-8")
     print(f"결과: {out} / 표: {out.with_suffix('.md')}")
